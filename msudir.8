@@ -1,0 +1,105 @@
+.\"	$Id: msudir.8,v 1.14 2002/08/27 17:00:26 abs Exp $
+.\"
+.\" Copyright (c) 2002 by David Brownlee <abs@mono.org>
+.\" Absolutely no warranty.
+.\"
+.Dd Feb 13, 2002
+.Dt MSU 1
+.Sh NAME
+.Nm msudir
+.Nd Convenient access to setuid scripts
+.Sh SYNOPSIS
+.Nm
+.Ar directory/cmd
+.Op Ar args
+.Sh DESCRIPTION
+.Nm
+allows enabled users to easily manage 'setuid' scripts and binaries.
+A directory containing scripts or other executables is created inside the
+.Em basedir
+for each destination user. Any user is then able to invoke the script 'bob'
+in the directory 'jo' via 'msudir jo/bob'. The script will be run under
+the uid and primary gid of the destination user. (All other group memberships
+are revoked). If the destination user cannot read the current working
+directory it is set to '/'.
+.Pp
+Configuration is specified in
+.Pa msudir.conf .
+.Pp
+The
+.Em basedir
+must be owned by root and not writable by any other user. Each directory
+inside the basedir and files inside must be owned by the destination
+user or root, and also not writable by any other user.
+.Sh FILE FORMAT
+The 
+.Pa msudir.conf 
+contains lines of the form 'key = value'. If a line contains a '#' the rest
+of that line is ignored. Options after a [tag] line will only apply to a
+directory named 'tag', and will override any global options.
+Valid directives are:
+.Bl -tag -width dirmatchuser
+.It Em basedir
+Base directory containing user directories and commands. Default:
+.Pa /usr/local/msudir .
+.It Em dirmatchuser
+Directory names must match user names. Default: true.
+.It Em fromgroup
+If set the source process must be running under this real or effective group
+id, or have it in its current group access list. Default: unset.
+.It Em path
+PATH setting for all commands. Default: (spaces introduced for legibility) /usr/local/bin: /usr/local/sbin: /usr/pkg/bin: /usr/pkg/sbin: /usr/bin: /usr/sbin: /bin: /sbin: /usr/games: /usr/X11R6/bin
+.It Em rootdir
+If a directory is to contain setuid root scripts, the directory name must match
+.Em rootdir . Default: no match
+.It Em scriptsonly
+Only permit files that start with '#!'. Default: false.
+.El
+.Pp
+Boolean variables (those that default to 'true' or 'false') can be set to
+any of 'false', 'off', 'no', '0', or 'true', 'on', 'yes' and '1'.
+.Sh FILES
+${PREFIX}/etc/msudir.conf
+.Sh ENVIRONMENT
+.Nm
+alters the following environment variables:
+.Bl -tag -width PATH
+.It Ev IFS
+Unset
+.It Ev OLD_USER
+Set to the previous value of
+.Ev USER .
+.It Ev PATH
+Set to the value in
+.Pa msudir.conf (or default).
+.It Ev USER
+Set to the username of the destination user.
+.El
+.Pp
+.Nm
+also sanitises all environment variables and arguments replacing everything
+except alphanumeric and "#%'+,-./:=@\_ with spaces, and removes
+.Ev LD_PRELOAD
+and similar variables.
+.Sh EXAMPLES
+Sample msudir.conf file:
+.Bd -literal
+# common defines
+dirmatchuser = 1
+basedir=/usr/local/msudir
+
+# special options for one directory
+[flinge]
+dirmatchuser = 0
+fromgroup = flenge
+path=/bin:/usr/bin:/sbin:/usr/sbin
+.Ed
+.Sh AUTHORS
+David Brownlee <abs@mono.org>.
+.Sh CAVEATS
+While
+.Nm
+does
+attempt to sanitise the environment and arguments passed it does
+.Em not
+remove the need to write scripts that treat their input carefully.
